@@ -31,18 +31,71 @@ description: >
 
 ---
 
+## 凭证说明
+
+| 变量 | 用途 | 所需模块 | 获取方式 |
+|------|------|---------|---------|
+| APIFY_API_TOKEN | 各平台数据抓取（6平台 + Google Trends） | trend-radar / brand-voice-trainer / video-scripter | [Apify Console](https://console.apify.com/) → Settings → Integrations → API token |
+| GOOGLE_AI_API_KEY | Gemini 图片生成 | graphic-maker | Google AI Studio |
+
+### Apify Token 配置
+
+1. 注册 [Apify](https://apify.com/) 账号（免费计划含每月 $5 额度）
+2. 进入 [Console → Integrations](https://console.apify.com/settings/integrations) 复制 API Token
+3. 在 Coze Skill 凭证配置中添加 `APIFY_API_TOKEN`，值为复制的 Token
+
+**配置后能力提升：**
+- trend-radar：从搜索模式升级为真实爬虫抓取，获取精确互动数据
+- brand-voice-trainer：可直接抓取品牌社媒主页历史帖子
+- Google Trends：获取精确的搜索热度曲线和 Rising 关键词
+
+**无 Apify Token 时**：trend-radar 降级为搜索模式（freshness 限定时间范围），数据精度降低但仍可用。Google Trends 部分降级为搜索推断。
+
 # 模块1：trend-radar（每日热门监测）
 
-## 监测平台 & 数据源
+## 监测平台 & 数据源（7平台）
 
-| 平台 | Apify Actor | 抓取内容 | 入选阈值 |
-|------|------------|---------|---------|
-| X/Twitter | apidojo/twitter-scraper | Trending topics + 高互动帖 | 互动>10k 或 24h转发>1k |
-| Instagram | apidojo/instagram-scraper | 热门 Reels + 话题标签帖 | 播放>500k 或点赞>50k |
-| TikTok | apidojo/tiktok-scraper | Trending videos + 热门音乐 | 播放>1M 或7d增长>300% |
-| YouTube | apidojo/youtube-scraper | 热门视频 + Rising keywords | 播放>500k 或48h涨幅显著 |
-| Facebook | apidojo/facebook-scraper | 热门帖文 + 群组讨论 | 互动>5k 或分享>500 |
-| Reddit | apidojo/reddit-scraper | 垂直子版块热帖 + Rising | Upvotes>500 或评论>200 |
+| # | 平台 | Apify Actor ID | 抓取内容 | 入选阈值 |
+|---|------|---------------|---------|---------|
+| 1 | X/Twitter | `apidojo/twitter-scraper` | 关键词搜索推文 + 高互动帖 | 互动>10k 或 24h转发>1k |
+| 2 | Instagram | `apify/instagram-api-scraper` | Hashtag/Profile帖子 + Reels | 播放>500k 或点赞>50k |
+| 3 | TikTok | `thescrapelab/tiktok-scraper-2-0` | 关键词视频 + Profile视频 | 播放>1M 或7d增长>300% |
+| 4 | YouTube | `streamers/youtube-scraper` | 搜索结果视频 + 频道视频 | 播放>500k 或48h涨幅显著 |
+| 5 | Facebook | `apify/facebook-pages-scraper` | Page帖子 + 群组讨论 | 互动>5k 或分享>500 |
+| 6 | Reddit | `betterdevsscrape/reddit-scraper` | Subreddit热帖 + 搜索 | Upvotes>500 或评论>200 |
+| 7 | Google Trends | `sourabhbgp/google-trends-scraper` | Rising keywords + Trending searches + 相关查询 | 搜索热度>50 或 Rising%>100% |
+
+## 时间范围控制（核心）
+
+> **trend-radar 的核心价值在于时效性。所有抓取操作必须明确限定时间范围，确保"今日热点"产出的数据确实来自当天或近48h。**
+
+### 时间范围规则
+
+| 模式 | 数据时间范围 | 说明 |
+|------|------------|------|
+| 每日热点（默认） | **当天 00:00 ~ 当前时刻** | 核心抓取窗口，优先24h内 |
+| 每日热点（扩展） | **过去48h** | 如当日数据不足，自动扩展至48h |
+| 周汇总 | **过去7天（周一~周日）** | 汇总一周趋势演变 |
+
+### 各平台时间过滤实现
+
+| 平台 | 时间过滤方式 | 参数 |
+|------|------------|------|
+| X/Twitter | Actor input: `start_date` / `end_date` | 格式 `YYYY-MM-DD` |
+| Instagram | 抓取后按 `timestamp` 字段过滤 | 保留 ≥ start_date 的帖子 |
+| TikTok | 抓取后按 `createTime` 字段过滤 | 保留 ≥ start_timestamp 的视频 |
+| YouTube | Actor input: `searchFilters` / 抓取后按发布时间过滤 | 保留48h内视频 |
+| Facebook | 抓取后按 `time` / `created_time` 过滤 | 保留 ≥ start_date 的帖子 |
+| Reddit | Actor input: `time_filter` = `day` / `week` | 直接传入时间窗口 |
+| Google Trends | Actor input: `time_range` = `now 1-d` / `now 7-d` | 内置时间范围 |
+
+### 搜索模式时间过滤
+
+无 Apify Token 降级为搜索模式时，**必须**在搜索关键词中附加时间限定：
+- 使用搜索工具的 `freshness` 参数（1=最近1天，7=最近7天）
+- 使用 `publish_time` 参数限定发布时间范围
+- 搜索关键词中附加 `2026` / `this week` / `today` 等时间限定词
+- 抓取结果中必须验证发布日期，**丢弃超出时间窗口的内容**
 
 ## 筛选评分框架
 
@@ -51,18 +104,21 @@ description: >
 | 维度 | 权重 | 说明 |
 |------|------|------|
 | 传播力 | 40% | 互动量/播放量绝对值 + 增速 |
-| 时效性 | 25% | 24-48h内爆发优先 |
+| 时效性 | 25% | 24-48h内爆发优先，超出窗口降权 |
 | 品牌相关性 | 20% | 与 listening-config.md 中赛道/产品关键词匹配度 |
 | 可借鉴性 | 15% | 内容形式/钩子/叙事是否可迁移到品牌内容 |
 
 ## 每日执行流程
 
-1. 读取 `listening-config.md`，确认监测平台、子版块、阈值
-2. 如配置了 `APIFY_API_TOKEN`，调用 `scripts/fetch_trends.py` 抓取数据
-3. 如无 API Token，使用搜索工具获取各平台当日热门内容
-4. 按评分框架筛选，每平台 Top 5
-5. 读取 `references/trend-report-template.md`，填充产出报告
-6. 保存为 `trend-reports/{date}-daily.md`
+1. 读取 `listening-config.md`，确认监测平台、子版块、阈值、关键词
+2. **计算时间范围**：确定 start_date = 当天 00:00，end_date = 当前时刻；如当日数据不足扩展至48h
+3. 如配置了 `APIFY_API_TOKEN`，调用 `scripts/fetch_trends.py` 抓取数据，**传入 start_date 和 end_date**
+4. 如无 API Token，使用搜索工具获取各平台当日热门内容，**必须设置 freshness 或 publish_time 限定时间范围**
+5. **验证时间**：检查所有抓取结果的发布时间，丢弃超出时间窗口的内容
+6. 按评分框架筛选，每平台 Top 5
+7. **Google Trends Rising Keywords**：单独输出赛道相关的 Rising 查询词和热度变化
+8. 读取 `references/trend-report-template.md`，填充产出报告（含数据时间窗元信息）
+9. 保存为 `trend-reports/{date}-daily.md`
 
 ## 周五汇总模式
 
