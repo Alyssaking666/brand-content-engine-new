@@ -108,17 +108,50 @@ description: >
 | 品牌相关性 | 20% | 与 listening-config.md 中赛道/产品关键词匹配度 |
 | 可借鉴性 | 15% | 内容形式/钩子/叙事是否可迁移到品牌内容 |
 
+## 关键词策略：精确 + 泛化双轨
+
+> 每个平台产出**两个** Top 5 板块：**平台热门**（General Trending）+ **赛道相关**（Niche Relevant）。前者把握平台大势，后者指导内容制作。
+
+### 精确关键词（来自 listening-config.md 的品牌/赛道关键词）
+- 直接与品牌产品相关的搜索词
+- 示例：`dog probiotic`, `dog allergy chews`, `PenPen`
+
+### 泛化关键词（从赛道向上扩展）
+- 从品牌赛道泛化到更广的内容领域，捕捉潜在话题和内容结合机会
+- 泛化规则：品牌产品 → 品类 → 生活方式 → 情感共鸣
+- 示例映射：
+  - 宠物保健品 → 宠物健康 → 宠物护理 → 狗狗生活 → 宠主情感
+  - `dog probiotic` → `dog gut health` → `dog health tips` → `puppy care` → `dog mom life`
+  - `dog allergy chews` → `dog itchy skin` → `dog skin care` → `dog wellness` → `pet parent struggles`
+
+### 双板块结构
+
+每个平台输出两张表：
+
+| 板块 | 数据源 | 关键词 | 筛选标准 | 用途 |
+|------|--------|--------|---------|------|
+| 🔥 平台热门 Top 5 | 平台 Trending/热门算法 | 通用热门（不限赛道） | 高互动+高增速 | 把握平台大势，发现内容嫁接机会 |
+| 🐾 赛道相关 Top 5 | 精确+泛化关键词搜索 | 精确+泛化关键词 | 品牌相关性≥3分 | 直接指导品牌内容制作 |
+
 ## 每日执行流程
 
 1. 读取 `listening-config.md`，确认监测平台、子版块、阈值、关键词
-2. **计算时间范围**：确定 start_date = 当天 00:00，end_date = 当前时刻；如当日数据不足扩展至48h
-3. 如配置了 `APIFY_API_TOKEN`，调用 `scripts/fetch_trends.py` 抓取数据，**传入 start_date 和 end_date**
-4. 如无 API Token，使用搜索工具获取各平台当日热门内容，**必须设置 freshness 或 publish_time 限定时间范围**
-5. **验证时间**：检查所有抓取结果的发布时间，丢弃超出时间窗口的内容
-6. 按评分框架筛选，每平台 Top 5
-7. **Google Trends Rising Keywords**：单独输出赛道相关的 Rising 查询词和热度变化
-8. 读取 `references/trend-report-template.md`，填充产出报告（含数据时间窗元信息）
-9. 保存为 `trend-reports/{date}-daily.md`
+2. **扩展泛化关键词**：基于赛道关键词，按泛化规则生成扩展词表（每个赛道关键词→3-5个泛化词）
+3. **计算时间范围**：确定 start_date = 当天 00:00，end_date = 当前时刻；如当日数据不足扩展至48h
+4. **双轨抓取**（如配置了 `APIFY_API_TOKEN`）：
+   - **平台热门**：抓取各平台 Trending/Explore 热门内容（不限关键词）
+   - **赛道相关**：用精确+泛化关键词搜索各平台内容，**传入 start_date 和 end_date**
+5. **双轨抓取**（如无 API Token，搜索降级模式）：
+   - **平台热门**：搜索 "trending on {platform}" / "{platform} viral today"，**必须设置 freshness 或 publish_time**
+   - **赛道相关**：用精确+泛化关键词搜索，**必须设置 freshness 或 publish_time**
+6. **验证时间**：检查所有抓取结果的发布时间，丢弃超出时间窗口的内容
+7. **筛选评分**：
+   - 平台热门：按传播力+时效性打分，Top 5
+   - 赛道相关：按评分框架（传播力40%+时效性25%+品牌相关性20%+可借鉴性15%）打分，Top 5
+8. **Google Trends Rising Keywords**：单独输出赛道相关的 Rising 查询词和热度变化
+9. **热度×赛道交叉洞察**：分析平台热门趋势与赛道内容的结合点（形式/话题/情绪/BGM）
+10. 读取 `references/trend-report-template.md`，填充产出报告（含数据时间窗元信息+泛化关键词）
+11. 保存为 `trend-reports/{date}-daily.md`
 
 ## 周五汇总模式
 
