@@ -1,10 +1,19 @@
 ---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191110102MACQD9K64018705
+    ProduceID: 2556785148560384_0-data_volume/7646804706622472488-files/所有对话/主对话/PenPen/skill-files-v5.2/SKILL.md
+    ReservedCode1: ""
+    ContentPropagator: 001191110102MACQD9K64028705
+    PropagateID: 2556785148560384#1780542243834
+    ReservedCode2: ""
 name: brand-content-engine
 description: >
-  品牌社媒内容全链路引擎，涵盖三大模块：1）热门内容监测（trend-radar）：每日抓取 X/IG/TikTok/YouTube/Facebook/Reddit 各平台热门话题、爆款视频、Trending Music，每周五汇总；2）品牌社媒选题规划（content-planner）：基于监测数据+品牌Content Pillar，每周五出下周选题方向和内容计划；3）品牌内容制作（content-creator）：含品牌调性训练、文案撰写、图文制作、视频脚本、格式适配，从brand tone到成品一条龙。触发词："今日热点"、"每日热门"、"下周选题"、"内容计划"、"写文案"、"做图"、"写脚本"、"品牌调性"、"训练品牌voice"、"社媒内容"、"trending"、"content plan"
+    品牌社媒内容全链路引擎，涵盖三大模块：1）热门内容监测（trend-radar）：每日抓取 X/IG/TikTok/YouTube/Facebook/Reddit 各平台热门话题、爆款视频、Trending Music，每周五汇总；2）品牌社媒选题规划（content-planner）：基于监测数据+品牌Content Pillar，每周五出下周选题方向和内容计划；3）品牌内容制作（content-creator）：含品牌调性训练、文案撰写、图文制作、视频脚本、格式适配，从brand tone到成品一条龙。触发词："今日热点"、"每日热门"、"下周选题"、"内容计划"、"写文案"、"做图"、"写脚本"、"品牌调性"、"训练品牌voice"、"社媒内容"、"trending"、"content plan"
+
 ---
 
-# 品牌社媒内容引擎
+# 品牌社媒内容引擎 v5.2
 
 三大模块一条龙：**监测 → 选题 → 制作**。每次触发时，根据用户意图自动路由到对应模块。
 
@@ -24,7 +33,7 @@ description: >
 ## 共享依赖
 
 所有模块读取：
-- `listening-config.md`（赛道/品牌/content pillars/监测配置）
+- `listening-config.md`（赛道/品牌/content pillars/监测配置/关键词矩阵/动态扩展关键词）
 - `about-me.md` + `voice.md`（如已有，来自 voice-builder）
 
 如 `listening-config.md` 不存在，首次运行时引导用户创建，使用 `references/listening-config-template.md` 模板。
@@ -35,7 +44,7 @@ description: >
 
 | 变量 | 用途 | 所需模块 | 获取方式 |
 |------|------|---------|---------|
-| APIFY_API_TOKEN | 各平台数据抓取（6平台 + Google Trends） | trend-radar / brand-voice-trainer / video-scripter | [Apify Console](https://console.apify.com/) → Settings → Integrations → API token |
+| APIFY_API_TOKEN | 各平台数据抓取（7平台） | trend-radar / brand-voice-trainer / video-scripter | [Apify Console](https://console.apify.com/) → Settings → Integrations → API token |
 | GOOGLE_AI_API_KEY | Gemini 图片生成 | graphic-maker | Google AI Studio |
 
 ### Apify Token 配置
@@ -45,7 +54,7 @@ description: >
 3. 在 Coze Skill 凭证配置中添加 `APIFY_API_TOKEN`，值为复制的 Token
 
 **配置后能力提升：**
-- trend-radar：从搜索模式升级为真实爬虫抓取，获取精确互动数据
+- trend-radar：从搜索模式升级为真实爬虫抓取，获取精确互动数据+原始链接
 - brand-voice-trainer：可直接抓取品牌社媒主页历史帖子
 - Google Trends：获取精确的搜索热度曲线和 Rising 关键词
 
@@ -53,17 +62,260 @@ description: >
 
 # 模块1：trend-radar（每日热门监测）
 
-## 监测平台 & 数据源（7平台）
+## 三层架构（v4.0 核心变更）
 
-| # | 平台 | Apify Actor ID | 抓取内容 | 入选阈值 |
+> **trend-radar 从单层搜索升级为三层架构，解决"Top 5 是不是真的 Top 5"问题。**
+
+每个平台产出**三个**板块，数据来源和爬虫规则完全不同：
+
+| 层级 | 板块 | 数据来源 | 爬虫规则 | 是否为"真正的Top5" |
+|------|------|---------|---------|-------------------|
+| Layer 1 | 🔥 **平台热门** Top 5 | 平台原生trending/discover API | 直接抓平台trending页面→过滤宠物/动物相关 | ✅ 是，来自平台自己的trending算法 |
+| Layer 2 | 🐾 **赛道相关** Top 5 | 赛道关键词搜索 | 精确+泛化关键词→时间窗过滤→按互动排序→**排除品牌自身** | ⚠️ 是"赛道内最高互动"，不是平台trending |
+| Layer 3 | 📊 **品牌动态** | 品牌主页抓取 | 直接抓品牌主页最新帖子 | 纯监测，不参与排名 |
+
+### 关键规则：赛道相关板块排除品牌内容
+
+🐾 赛道相关 Top 5 **必须排除**品牌自身账号发布的内容：
+- 抓取结果中，如果 `author.username` / `ownerUsername` / `author.nickname` 匹配品牌账号（来自 listening-config.md 的品牌社媒主页链接），该条内容**不得**出现在赛道相关板块
+- 品牌自身内容只出现在 📊 品牌动态 板块
+- 品牌竞品的内容**可以**出现在赛道相关板块（竞品监测是有价值的）
+
+## 监测平台 & Actor 配置
+
+### Layer 1: 平台热门（Platform Trending）
+
+| # | 平台 | Apify Actor ID | 抓取目标 | 链接字段 | 筛选方式 |
+|---|------|---------------|---------|---------|---------|
+| 1 | X/Twitter | `automation-lab/twitter-trends-scraper` | 美国Top50 trending topics + 搜索URL | `twitterSearchUrl` | 从50条trending中过滤宠物/动物/dog相关 |
+| 2 | Instagram | `agentx/instagram-trending-scraper` | Explore feed trending + topic标签 | `url` / `shortcode` | 从Explore中过滤宠物/动物topic |
+| 3 | TikTok | `coregent/tiktok-trend-discovery-scraper` | Trending hashtags + discovery数据 | `url` / `webVideoUrl` | 直接获取trending内容 |
+| 4 | YouTube | `streamers/youtube-scraper` | trending关键词搜索（YouTube无直接trending API） | `url` | 搜索"trending"相关词，近似方案 |
+| 5 | Reddit | ⚠️ 降级 | Apify Reddit爬虫当前不可用 | — | 搜索补充：`site:reddit.com` + 热门话题 |
+| 6 | Facebook | ❌ 无trending | Facebook 2018年移除公开trending功能 | — | 搜索补充或监测指定品牌主页 |
+| 7 | Google Trends | `sourabhbgp/google-trends-scraper` | Rising keywords + Trending searches | related articles links | 直接输出rising数据 |
+
+### Layer 2: 赛道相关（Niche Relevant）
+
+| # | 平台 | Apify Actor ID | 抓取目标 | 链接字段 | 品牌排除 |
+|---|------|---------------|---------|---------|---------|
+| 1 | X/Twitter | `kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest` | 赛道关键词搜索推文 | `url` | 排除品牌账号 |
+| 2 | Instagram | `apify/instagram-hashtag-scraper` | Hashtag搜索帖子 | `url` | 排除品牌账号 |
+| 3 | TikTok | `thescrapelab/tiktok-scraper-2-0` | 关键词视频搜索 | `webVideoUrl` / `id` | 排除品牌账号 |
+| 4 | YouTube | `streamers/youtube-scraper` | 赛道关键词搜索视频 | `url` | 排除品牌频道 |
+| 5 | Reddit | ⚠️ 降级 | Apify Reddit爬虫当前不可用 | — | 搜索补充：`site:reddit.com` + 赛道关键词 |
+| 6 | Facebook | `apify/facebook-pages-scraper` | 监测指定宠物品牌/群组主页 | `url` | 排除品牌主页 |
+| 7 | Google Trends | `sourabhbgp/google-trends-scraper` | 赛道关键词explore模式 | — | N/A |
+
+### Layer 3: 品牌动态（Brand Monitor）
+
+| # | 平台 | Apify Actor ID | 抓取目标 | 链接字段 |
 |---|------|---------------|---------|---------|
-| 1 | X/Twitter | `apidojo/twitter-scraper` | 关键词搜索推文 + 高互动帖 | 互动>10k 或 24h转发>1k |
-| 2 | Instagram | `apify/instagram-api-scraper` | Hashtag/Profile帖子 + Reels | 播放>500k 或点赞>50k |
-| 3 | TikTok | `thescrapelab/tiktok-scraper-2-0` | 关键词视频 + Profile视频 | 播放>1M 或7d增长>300% |
-| 4 | YouTube | `streamers/youtube-scraper` | 搜索结果视频 + 频道视频 | 播放>500k 或48h涨幅显著 |
-| 5 | Facebook | `apify/facebook-pages-scraper` | Page帖子 + 群组讨论 | 互动>5k 或分享>500 |
-| 6 | Reddit | `betterdevsscrape/reddit-scraper` | Subreddit热帖 + 搜索 | Upvotes>500 或评论>200 |
-| 7 | Google Trends | `sourabhbgp/google-trends-scraper` | Rising keywords + Trending searches + 相关查询 | 搜索热度>50 或 Rising%>100% |
+| 1 | Instagram | `apify/instagram-api-scraper` directUrls模式 | 品牌IG主页最新帖子 | `url` |
+| 2 | TikTok | `thescrapelab/tiktok-scraper-2-0` profile模式 | 品牌TikTok最新视频 | `webVideoUrl` |
+| 3 | YouTube | `streamers/youtube-scraper` | 品牌YouTube频道 | `url` |
+| 4 | Facebook | `apify/facebook-pages-scraper` | 品牌Facebook主页 | `url` |
+
+> 注：品牌动态仅在用户明确要求或周五汇总时展示。日常每日报告默认只展示 Layer 1 + Layer 2。
+
+## 各平台 Apify 输入参数
+
+### Layer 1: 平台热门
+
+**X/Twitter Trends (`automation-lab/twitter-trends-scraper`)**：
+```json
+{
+  "locations": ["United States", "Worldwide"],
+  "maxItems": 100
+}
+```
+- 输出字段：`name`(趋势名), `tweetVolume`(推文量), `twitterSearchUrl`(搜索URL), `locationName`, `isHashtag`
+- 用途：获取Twitter真实trending topics，从中筛选宠物/动物相关
+- 注意：返回的是trending topic名称和搜索链接，不是具体推文。需要再从搜索链接中找到具体推文
+
+**X/Twitter Trends 后续搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`)**：
+```json
+{
+  "searchTerms": ["{trending topic from Layer 1}"],
+  "maxTweets": 5,
+  "sort": "Top"
+}
+```
+- 用途：对Layer 1发现的宠物相关trending topic，搜索具体推文获取URL和互动数据
+
+**Instagram Explore (`agentx/instagram-trending-scraper`)**：
+```json
+{
+  "max_results": 50,
+  "download_medias": "none",
+  "country": "United States"
+}
+```
+- ⚠️ **country参数必填，必须使用全称"United States"（非"US"）**，否则Actor启动报错
+- 输出字段：`id`, `caption`, `likesCount`, `url`, `section`(如"Fashion & Beauty"), `topic`(如"Street Fashion")
+- 用途：获取IG Explore trending内容，从section/topic中筛选宠物/动物相关
+
+**TikTok Trend Discovery (`coregent/tiktok-trend-discovery-scraper`)**：
+```json
+{}
+```
+- 输出字段：trending hashtags, trending videos, discovery data
+- 用途：获取TikTok当前trending内容
+
+**YouTube (`streamers/youtube-scraper`)**：
+```json
+{
+  "searchQueries": ["trending pets today", "viral dog video", "trending animals"],
+  "maxResults": 15
+}
+```
+- YouTube无直接trending API，用trending相关关键词搜索近似
+
+### Layer 2: 赛道相关（多维关键词矩阵驱动）
+
+> Layer 2 的搜索词从 listening-config.md 的关键词矩阵(D1-D4) + 动态扩展关键词中组合生成，每个平台使用适配该平台的词组格式和维度优先级。
+
+**X/Twitter 赛道搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`)**：
+```json
+{
+  "searchTerms": [
+    "dog probiotic since:{date}", "dog supplement since:{date}",
+    "dog allergy chews since:{date}", "my dog itchy skin since:{date}",
+    "dog joint pain since:{date}", "dog upset stomach since:{date}",
+    "dog gut health since:{date}", "senior dog mobility since:{date}"
+  ],
+  "maxTweets": 10,
+  "sort": "Top"
+}
+```
+- 优先维度：D3(症状) > D1(产品) > D4(场景)
+- 无最低结果数限制
+- 支持Twitter高级搜索语法：`since:`, `until:`, `lang:en`
+- 输出字段：`url`, `text`, `likeCount`, `retweetCount`, `author.userName`, `createdAt`
+- **排除品牌账号**：结果中 `author.userName` 匹配品牌账号的条目丢弃
+
+**Instagram Hashtag (`apify/instagram-hashtag-scraper`)**：
+```json
+{
+  "hashtags": ["dogsupplement", "dogprobiotic", "doghealth", "dogwellness",
+               "dogallergy", "dogjointhealth", "dognutrition", "healthydog",
+               "petsupplements", "holisticpetcare"],
+  "resultsLimit": 15
+}
+```
+- 优先维度：D1(产品) > D4(场景) > D3(症状)
+- 输出字段：`url`, `caption`, `likesCount`, `timestamp`, `ownerUsername`
+- **排除品牌账号**：结果中 `ownerUsername` 匹配品牌账号的条目丢弃
+
+**TikTok (`thescrapelab/tiktok-scraper-2-0`)**：
+```json
+{
+  "workflow": "keywords",
+  "keywords": ["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"],
+  "maxVideosPerKeyword": 5
+}
+```
+- 优先维度：D3(症状) > D1(产品) > D4(场景)
+- **限5个关键词**（Actor不稳定，贪多超时）
+- 输出字段：`webVideoUrl`, `text`, `statsV2.playCount`, `statsV2.diggCount`, `author.nickname`
+- **排除品牌账号**：结果中 `author.nickname` 匹配品牌账号的条目丢弃
+
+**YouTube (`streamers/youtube-scraper`)**：
+```json
+{
+  "searchQueries": ["best dog probiotic 2026", "dog supplement review",
+                    "is glucosamine good for dogs", "dog allergy chews honest review",
+                    "senior dog joint supplement", "dog probiotic before and after",
+                    "vet recommended dog supplements", "dog itchy skin solution"],
+  "maxResults": 10
+}
+```
+- 优先维度：D1(产品) > D3(症状) > D2(成分) > D4(场景)
+- 输出字段：`url`, `title`, `viewCount`, `numberOfLikes`, `channelName`
+- **排除品牌频道**：结果中 `channelName` 匹配品牌频道名的条目丢弃
+
+**Facebook (`apify/facebook-pages-scraper`)**：
+```json
+{
+  "startUrls": [{"url": "https://www.facebook.com/{competitor-brand-page}"}],
+  "maxItems": 10
+}
+```
+- Facebook无trending功能，改为监测指定竞品/行业品牌主页
+- 需要用户在 listening-config.md 中提供要监测的Facebook页面URL
+
+**Google Trends Explore (`sourabhbgp/google-trends-scraper`)**：
+```json
+{
+  "mode": "explore",
+  "searchTerms": ["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"],
+  "geo": "US",
+  "time_range": "now 1-d"
+}
+```
+- 优先维度：D1(产品) > D2(成分) > D3(症状)
+- 输出：赛道关键词的搜索热度曲线 + Rising queries + Related topics
+
+### Layer 3: 品牌动态
+
+**Instagram 品牌主页 (`apify/instagram-api-scraper` directUrls模式)**：
+```json
+{
+  "directUrls": ["https://www.instagram.com/penpenpet/"],
+  "resultsLimit": 10
+}
+```
+
+**TikTok 品牌主页 (`thescrapelab/tiktok-scraper-2-0` profile模式)**：
+```json
+{
+  "workflow": "profiles",
+  "profiles": ["penpenpet"],
+  "maxVideosPerProfile": 10
+}
+```
+
+## Reddit & Facebook 特殊处理
+
+### Reddit（Public JSON API 直连，v5.1）
+
+**方案**：直接调用 Reddit Public JSON API，无需 Apify/OAuth，免费且无速率限制（浏览器级别请求）。
+
+**数据源**：
+- **热门帖**：`https://www.reddit.com/r/{subreddit}/hot.json?limit=25`
+- **月度Top帖**：`https://www.reddit.com/r/{subreddit}/top.json?t=month&limit=25`
+
+**垂类 Subreddit 列表**（从 listening-config.md 读取，默认12个）：
+
+| 类别 | Subreddit | 说明 |
+|------|-----------|------|
+| 核心养狗 | dogs, DogCare, puppy101 | 综合养狗讨论 |
+| 狗健康 | DogHealth, AskVet, DogAllergies | 健康问题+兽医建议 |
+| 狗粮/营养 | dogfood, rawpetfood | 饮食和营养补充 |
+| 综合宠物 | pets, PetHealth | 泛宠物讨论 |
+| 生活方式 | seniordogs, reactivedogs | 特定养宠场景 |
+| 自然/整全 | NaturalPetCare | 天然保健讨论 |
+
+**筛选规则**：
+1. 只抓取垂类相关subreddit，不抓r/all等泛版块
+2. 合并 hot + top(month) 后去重
+3. **关键词相关性过滤**（v5.2新增）：标题或正文需包含 D1-D4 任一维度关键词（宽松匹配），或讨论与宠物健康/营养/保健品相关的话题
+4. 门槛：upvotes>50 且 评论数>20
+5. 按互动量排序，取Top 10
+
+**返回字段**：
+- `title`（帖子标题）、`url` / `permalink`（原始链接）、`score`（upvotes）、`num_comments`（评论数）、`subreddit`、`created_utc`（发布时间）、`selftext`（正文摘要）
+
+**降级**：
+- 如环境无法访问 reddit.com（沙箱网络限制），降级为搜索补充：`site:reddit.com` + 赛道关键词 + `freshness=7`（近7天）
+
+### Facebook（无公开trending功能）
+
+**现状**：Facebook 2018年移除了公开Trending功能。`apify/facebook-pages-scraper` 只能抓取指定主页，无法搜索或获取trending。
+
+**降级方案**（默认）：
+- 搜索补充Facebook数据
+- 监测指定竞品/行业品牌Facebook主页（需用户在listening-config.md中提供URL）
 
 ## 时间范围控制（核心）
 
@@ -79,87 +331,242 @@ description: >
 
 ### 各平台时间过滤实现
 
-| 平台 | 时间过滤方式 | 参数 |
-|------|------------|------|
-| X/Twitter | Actor input: `start_date` / `end_date` | 格式 `YYYY-MM-DD` |
-| Instagram | 抓取后按 `timestamp` 字段过滤 | 保留 ≥ start_date 的帖子 |
-| TikTok | 抓取后按 `createTime` 字段过滤 | 保留 ≥ start_timestamp 的视频 |
-| YouTube | Actor input: `searchFilters` / 抓取后按发布时间过滤 | 保留48h内视频 |
-| Facebook | 抓取后按 `time` / `created_time` 过滤 | 保留 ≥ start_date 的帖子 |
-| Reddit | Actor input: `time_filter` = `day` / `week` | 直接传入时间窗口 |
-| Google Trends | Actor input: `time_range` = `now 1-d` / `now 7-d` | 内置时间范围 |
-
-### 搜索模式时间过滤
-
-无 Apify Token 降级为搜索模式时，**必须**在搜索关键词中附加时间限定：
-- 使用搜索工具的 `freshness` 参数（1=最近1天，7=最近7天）
-- 使用 `publish_time` 参数限定发布时间范围
-- 搜索关键词中附加 `2026` / `this week` / `today` 等时间限定词
-- 抓取结果中必须验证发布日期，**丢弃超出时间窗口的内容**
+| 平台 | Layer 1时间处理 | Layer 2时间处理 |
+|------|----------------|----------------|
+| X/Twitter | Trends自带时效性（实时热门） | `since:YYYY-MM-DD until:YYYY-MM-DD` 语法 |
+| Instagram | Explore自带时效性 | 抓取后按 `timestamp` 字段过滤 |
+| TikTok | Trending自带时效性 | 抓取后按 `createTime` 字段过滤 |
+| YouTube | 搜索后按发布时间过滤 | 搜索后按发布时间过滤 |
+| Reddit | N/A（降级为搜索） | 搜索设置freshness |
+| Facebook | N/A | 抓取后按 `time` 过滤 |
+| Google Trends | 内置 `time_range` 参数 | 内置 `time_range` 参数 |
 
 ## 数据准入规则（硬约束）
 
 1. **仅监测海外主流社媒平台**：X/Twitter、Instagram、TikTok、YouTube、Facebook、Reddit + Google Trends。**排除所有国内平台**（天猫、淘宝、微博、小红书、抖音国内版、拼多多等），搜索结果中涉及国内平台的内容一律过滤掉。
-2. **链接必填**：每条入选内容**必须**附带原始来源 URL，方便点击验证和追溯。无链接的内容不得录入报告。搜索降级模式下，优先从搜索结果中提取原始链接；如无法获取直接链接，则附上搜索结果页链接或平台搜索URL。
+2. **链接必填**：每条入选内容**必须**附带原始来源 URL，方便点击验证和追溯。无链接的内容不得录入报告。
 3. **时间窗验证**：所有内容必须经过发布时间校验，超出时间窗口的丢弃。
+4. **赛道相关排除品牌自身**：🐾赛道相关板块中，品牌账号发布的内容一律排除，只展示第三方内容。
+5. **Layer 1 宠物相关性过滤**：🔥平台热门板块从平台trending中筛选时，必须包含宠物/动物/dog/宠物健康相关关键词才算入选。
+6. **数据质量门槛（v5.1更新）**：
+   - **视频类内容（YouTube/TikTok/IG Reels）**：曝光量≥100,000 且 likes>1,000
+   - **图片类内容（IG图片/Facebook帖文）**：likes>1,000
+   - **推文（Twitter）**：likes>500
+   - **Reddit帖子**：upvotes>50 且 评论数>20（仅展示垂类subreddit当月top+hot帖文）
+   - **低于门槛的内容不展示**，但可在报告末尾以"最接近门槛内容"形式标注（标记📊），供参考
+7. **赛道相关展示数量**：每个平台Layer2展示**Top 10**（按曝光+互动排序），非Top 5
 
 ## 筛选评分框架
 
-每条内容按以下维度打分（满分10），≥7分入选：
-
+### Layer 1: 平台热门评分
 | 维度 | 权重 | 说明 |
 |------|------|------|
-| 传播力 | 40% | 互动量/播放量绝对值 + 增速 |
-| 时效性 | 25% | 24-48h内爆发优先，超出窗口降权 |
-| 品牌相关性 | 20% | 与 listening-config.md 中赛道/产品关键词匹配度 |
-| 可借鉴性 | 15% | 内容形式/钩子/叙事是否可迁移到品牌内容 |
+| 平台排名 | 40% | 在平台trending列表中的排名 |
+| 宠物相关性 | 30% | 与宠物/动物/狗话题的关联度 |
+| 传播力 | 20% | 互动量绝对值 |
+| 品牌嫁接潜力 | 10% | 是否可与品牌内容结合 |
 
-## 关键词策略：精确 + 泛化双轨
+### Layer 2: 赛道相关评分（≥7分入选）
+| 维度 | 权重 | 说明 |
+|------|------|------|
+| 传播力 | 35% | 互动量/播放量绝对值 + 增速 |
+| 时效性 | 20% | 24-48h内爆发优先，超出窗口降权 |
+| 品牌相关性 | 25% | 与 listening-config.md 关键词矩阵匹配的维度数（命中≥2个维度加分） |
+| 可借鉴性 | 20% | 内容形式/钩子/叙事是否可迁移到品牌内容 |
 
-> 每个平台产出**两个** Top 5 板块：**平台热门**（General Trending）+ **赛道相关**（Niche Relevant）。前者把握平台大势，后者指导内容制作。
+**多维度覆盖检查**：Layer 2 最终 Top 10 结果应覆盖至少 2 个关键词维度（如只命中 D1 产品层，需检查其他维度是否有数据未被捕获），避免同质化。
 
-### 精确关键词（来自 listening-config.md 的品牌/赛道关键词）
-- 直接与品牌产品相关的搜索词
-- 示例：`dog probiotic`, `dog allergy chews`, `PenPen`
+## 多维关键词矩阵系统（v5.2 核心升级）
 
-### 泛化关键词（从赛道向上扩展）
-- 从品牌赛道泛化到更广的内容领域，捕捉潜在话题和内容结合机会
-- 泛化规则：品牌产品 → 品类 → 生活方式 → 情感共鸣
-- 示例映射：
-  - 宠物保健品 → 宠物健康 → 宠物护理 → 狗狗生活 → 宠主情感
-  - `dog probiotic` → `dog gut health` → `dog health tips` → `puppy care` → `dog mom life`
-  - `dog allergy chews` → `dog itchy skin` → `dog skin care` → `dog wellness` → `pet parent struggles`
+> **从线性泛化（产品→品类→生活方式→情感）升级为4维关键词矩阵，每个平台使用不同的搜索词组合和格式，大幅提升赛道内容捕获覆盖面。**
 
-### 双板块结构
+### 关键词维度定义
 
-每个平台输出两张表：
+所有维度的具体词汇由 `listening-config.md` 的 `## 关键词矩阵` 板块定义，以下为框架：
 
-| 板块 | 数据源 | 关键词 | 筛选标准 | 用途 |
-|------|--------|--------|---------|------|
-| 🔥 平台热门 Top 5 | 平台 Trending/热门算法 | 通用热门（不限赛道） | 高互动+高增速 | 把握平台大势，发现内容嫁接机会 |
-| 🐾 赛道相关 Top 5 | 精确+泛化关键词搜索 | 精确+泛化关键词 | 品牌相关性≥3分 | 直接指导品牌内容制作 |
+| 维度 | 说明 | 适用平台 | 示例（宠物保健品赛道） |
+|------|------|---------|----------------------|
+| **D1: 产品层(Product)** | 品类通用名+产品形态 | 全平台 | dog probiotic, dog supplement, joint chews, allergy chews, calming treats, dental chews, hip and joint, multivitamin dogs |
+| **D2: 成分层(Ingredient)** | 核心功效成分 | YouTube + Google Trends | glucosamine dogs, fish oil dogs, turmeric pet, omega 3 dogs, prebiotic dogs, collagen dogs, digestive enzymes dogs |
+| **D3: 症状/痛点层(Symptom)** | 宠主搜索的问题描述 | 全平台（Twitter/Reddit优先） | dog itchy skin, dog diarrhea, dog joint pain, senior dog mobility, dog upset stomach, dog hair loss, dog bad breath, dog anxiety, dog hot spots |
+| **D4: 场景层(Scenario)** | 养宠生活场景 | YouTube + IG + TikTok | dog wellness routine, aging dog care, rescue dog nutrition, new puppy essentials, senior dog quality of life, dog preventive health |
+
+> **维度选用策略**：D1和D3是全平台必用维度；D2(成分)仅在YouTube和Google Trends使用（其他平台搜索量太低）；D4(场景)仅在YouTube/IG/TikTok使用。
+
+### 平台搜索词适配规则
+
+> 同一个品类在不同平台的"语言"完全不同，搜索词必须适配平台原生表达。
+
+| 平台 | 搜索特性 | 优先维度 | 搜索词格式要求 | 每次搜索词数量 |
+|------|---------|---------|--------------|-------------|
+| **TikTok** | Hashtag+短口语驱动，算法推荐为主 | D3 > D1 > D4 | 无空格hashtag + 口语短句 | **5个**（Actor不稳定，贪多超时） |
+| **Instagram** | Hashtag精确匹配，Explore推荐 | D1 > D4 > D3 | 无空格合成hashtag | 8-10个 |
+| **YouTube** | 长尾搜索，review/教程导向 | D1 > D3 > D2 > D4 | 问句/review句式/年份词 | 8-10个 |
+| **X/Twitter** | 短语+自然语言，实时讨论 | D3 > D1 > D4 | 自然语言短句，支持高级搜索语法 | 8-10个 |
+| **Reddit** | 问题导向，求助/推荐/讨论 | D3 > D1 > D4 | 通过subreddit + 关键词相关性过滤 | N/A（subreddit驱动） |
+| **Google Trends** | 搜索量词根，精确匹配 | D1 > D2 > D3 | 简短品类词根 | 5-8个 |
+
+### 各平台搜索词示例（基于宠物保健品赛道）
+
+**TikTok 搜索词组（5个，精选最高价值词）：**
+```json
+{
+  "keywords": ["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"]
+}
+```
+
+**Instagram 搜索词组（8-10个hashtag）：**
+```json
+{
+  "hashtags": ["dogsupplement", "dogprobiotic", "doghealth", "dogwellness", "dogallergy", "dogjointhealth", "dognutrition", "healthydog", "petsupplements", "holisticpetcare"]
+}
+```
+
+**YouTube 搜索词组（8-10个）：**
+```json
+{
+  "searchQueries": ["best dog probiotic 2026", "dog supplement review", "is glucosamine good for dogs", "dog allergy chews honest review", "senior dog joint supplement", "dog probiotic before and after", "vet recommended dog supplements", "dog itchy skin solution"]
+}
+```
+
+**X/Twitter 搜索词组（8-10个）：**
+```json
+{
+  "searchTerms": ["dog probiotic since:{date}", "dog supplement since:{date}", "dog allergy chews since:{date}", "my dog itchy skin since:{date}", "dog joint pain since:{date}", "dog upset stomach since:{date}", "dog gut health since:{date}", "senior dog mobility since:{date}"]
+}
+```
+
+**Google Trends 搜索词组（5-8个）：**
+```json
+{
+  "searchTerms": ["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"]
+}
+```
+
+### 动态关键词反馈环（v5.2 新增）
+
+> 解决"今天发现的热词不会补充进明天搜索"的问题。每日自动学习，越用越精准。
+
+**机制**：
+1. Day N 执行完成 → 从 Layer 2 Top 10 结果中提取：
+   - 高频出现的新 hashtag（出现≥3次且不在现有词库中）
+   - 新发现的竞品品牌名
+2. → 写入 `listening-config.md` 的 `## 动态扩展关键词` 板块（追加模式，带日期标签）
+3. → Day N+1 执行时自动读取，纳入搜索词组
+
+**listening-config.md 动态扩展关键词格式**：
+```markdown
+## 动态扩展关键词
+> 自动提取，有效期14天，最多保留30个，过期移入归档区
+
+### 2026-06-04 新发现
+- [TikTok] #dogbiome (出现5次, 来自Top10中3条内容)
+- [Instagram] #rawfeddogs (出现4次)
+- [YouTube] "dog microbiome supplement" (Top1标题关键词)
+- [竞品] "BarkBiotics" (新品牌, 出现在3个平台)
+
+### 2026-06-03 新发现
+- [TikTok] #allergydogmom (出现3次)
+- [X/Twitter] "dog skin barrier" (高互动推文关键词)
+```
+
+**反馈环规则**：
+- 每次执行后自动提取，无需人工干预
+- 扩展词有效期 14 天，超过 14 天未再出现则移入归档区
+- 扩展词最多保留 30 个（超出时按最近出现时间淘汰最旧的）
+- 用户可手动编辑 `listening-config.md` 的动态扩展板块添加/删除词
 
 ## 每日执行流程
 
-1. 读取 `listening-config.md`，确认监测平台、子版块、阈值、关键词
-2. **扩展泛化关键词**：基于赛道关键词，按泛化规则生成扩展词表（每个赛道关键词→3-5个泛化词）
+1. 读取 `listening-config.md`，确认监测平台、子版块、阈值、关键词矩阵(D1-D4)、动态扩展关键词、品牌账号列表
+2. **组装搜索词**：按平台适配规则，从关键词矩阵各维度 + 动态扩展关键词中组合生成每个平台的搜索词组（TikTok限5个，其他平台8-10个）
 3. **计算时间范围**：确定 start_date = 当天 00:00，end_date = 当前时刻；如当日数据不足扩展至48h
-4. **双轨抓取**（如配置了 `APIFY_API_TOKEN`）：
-   - **平台热门**：抓取各平台 Trending/Explore 热门内容（不限关键词）
-   - **赛道相关**：用精确+泛化关键词搜索各平台内容，**传入 start_date 和 end_date**
-5. **双轨抓取**（如无 API Token，搜索降级模式）：
-   - **平台热门**：搜索 "trending on {platform}" / "{platform} viral today"，**必须设置 freshness 或 publish_time**
-   - **赛道相关**：用精确+泛化关键词搜索，**必须设置 freshness 或 publish_time**
-   - **排除国内平台**：搜索关键词中附加 `-天猫 -淘宝 -微博 -小红书 -拼多多`，搜索结果中涉及国内平台的条目一律丢弃
-   - **保留原始链接**：每条搜索结果必须提取并保留原始 URL，无链接的不录入报告
-6. **验证时间**：检查所有抓取结果的发布时间，丢弃超出时间窗口的内容
-7. **筛选评分**：
-   - 平台热门：按传播力+时效性打分，Top 5
-   - 赛道相关：按评分框架（传播力40%+时效性25%+品牌相关性20%+可借鉴性15%）打分，Top 5
-8. **Google Trends Rising Keywords**：单独输出赛道相关的 Rising 查询词和热度变化
-9. **热度×赛道交叉洞察**：分析平台热门趋势与赛道内容的结合点（形式/话题/情绪/BGM）
-10. 读取 `references/trend-report-template.md`，填充产出报告（含数据时间窗元信息+泛化关键词）
-11. 保存为 `trend-reports/{date}-daily.md`
+
+4. **Layer 1 抓取：平台热门**（如配置了 `APIFY_API_TOKEN`）：
+   - Twitter: `automation-lab/twitter-trends-scraper` → 获取美国Top50 trending → 筛选宠物/动物相关
+   - Instagram: `agentx/instagram-trending-scraper` → 获取Explore trending → 筛选宠物/动物topic
+   - TikTok: `coregent/tiktok-trend-discovery-scraper` → 获取trending内容
+   - YouTube: `streamers/youtube-scraper` → trending关键词搜索
+   - Google Trends: `sourabhbgp/google-trends-scraper` → trending模式
+   - Reddit/Facebook: 搜索补充（`site:reddit.com trending pets` 等）
+   - **提取链接**：从Apify返回数据中提取链接字段，每条结果必须有可点击链接
+
+5. **Layer 2 抓取：赛道相关**（如配置了 `APIFY_API_TOKEN`）：
+   - Twitter: `kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest` → 多维关键词搜索（8-10词，D3>D1>D4）
+   - Instagram: `apify/instagram-hashtag-scraper` → 多维Hashtag搜索（8-10个，D1>D4>D3）
+   - TikTok: `thescrapelab/tiktok-scraper-2-0` → 多维关键词搜索（**5词**，D3>D1>D4）
+   - YouTube: `streamers/youtube-scraper` → 多维关键词搜索（8-10词，D1>D3>D2>D4）
+   - Facebook: `apify/facebook-pages-scraper` → 监测指定竞品主页
+   - Google Trends: `sourabhbgp/google-trends-scraper` → explore模式（5-8词，D1>D2>D3）
+   - **Reddit**: Public JSON API → 扩展垂类subreddit(12个)的hot+top(month)帖文 + 关键词相关性过滤
+   - **提取链接**：从Apify返回数据中提取链接字段
+   - **排除品牌内容**：过滤掉品牌账号发布的内容
+
+6. **Reddit 垂类抓取**（独立步骤）：
+   - 读取 listening-config.md 的 subreddits 配置（12个垂类社区）
+   - 对每个subreddit调用 `hot.json` + `top.json?t=month`
+   - 合并去重，关键词相关性过滤（标题/正文包含D1-D4维度关键词）
+   - 过滤：upvotes>50 且 评论>20
+   - 按互动量排序取Top 10
+   - 如环境无法访问 reddit.com，降级为搜索补充
+
+7. **数据质量门槛过滤**（v5.1）：
+   - 视频类（YouTube/TikTok/IG Reels）：曝光≥100K 且 likes>1,000
+   - 图片类（IG图片/Facebook）：likes>1,000
+   - 推文（Twitter）：likes>500
+   - Reddit：upvotes>50 且 评论>20
+   - 低于门槛的内容不展示，在报告末尾标注📊
+
+8. **Layer 3 抓取：品牌动态**（仅周五汇总或用户明确要求时）：
+   - 抓取品牌各社媒主页最新帖子
+   - 产出独立板块，不与Layer 1/2混合
+
+9. **验证时间**：检查所有抓取结果的发布时间，丢弃超出时间窗口的内容
+
+10. **筛选评分**：
+   - Layer 1 平台热门：按平台排名+宠物相关性打分，Top 5
+   - Layer 2 赛道相关：按评分框架打分，Top 10（排除品牌内容），再按数据质量门槛过滤
+   - **多维度覆盖检查**：确认Top 10覆盖≥2个关键词维度
+
+11. **Google Trends Rising Keywords**：单独输出赛道相关的 Rising 查询词和热度变化
+
+12. **热度×赛道交叉洞察**：分析Layer 1平台热门与Layer 2赛道内容的结合点（形式/话题/情绪/BGM）
+
+13. **动态关键词提取**（v5.2新增）：
+   - 从本次 Layer 2 Top 10 结果中提取新 hashtag（出现≥3次且不在现有词库）和竞品品牌名
+   - 写入 listening-config.md 的 `## 动态扩展关键词` 板块（带日期标签）
+   - 清理超过14天的过期词
+
+14. 读取 `references/trend-report-template.md`，填充产出报告（含数据时间窗元信息+爬虫规则说明）
+
+15. 保存为 `trend-reports/{date}-daily.md`
+
+### 降级模式（无 Apify Token）
+
+Layer 1 + Layer 2 均降级为搜索模式：
+- **必须**使用 `freshness` 参数限定时间范围
+- **必须**附加排除关键词：`-天猫 -淘宝 -微博 -小红书 -拼多多`
+- **搜索词组扩展**：即使降级模式也使用多维关键词矩阵，每个平台按维度优先级组合搜索词
+- **保留原始链接**：每条搜索结果必须提取并保留原始 URL
+- Layer 2 搜索关键词中排除品牌账号名
+
+### 报告结构顺序（v5.1 — 结果先行，数据来源后置）
+
+报告输出按以下顺序排列，洞察和结果先行，技术细节放最后：
+1. **💡 今日一句话洞察** — 最值得关注的趋势+品牌启示
+2. **🎯 热度×赛道交叉洞察** — Layer 1热门与Layer 2赛道的结合点
+3. **🔥 跨平台共振话题 TOP 5**
+4. **📈 Google Trends — Rising Keywords**
+5. **📱 各平台热门内容** — 每个平台🔥平台热门Top5 + 🐾赛道相关Top10，**不标注数据来源**（统一放最后）
+6. **💬 Reddit 垂类社区热帖** — 垂类subreddit当月top+hot帖文（upvotes>50，评论>20）
+7. **🎵 本日热门音乐/BGM**
+8. **🔑 新发现关键词** — 本次执行发现的新关键词/hashtag（已写入动态扩展词库）
+9. **📊 低于门槛参考内容** — 接近但未达门槛的内容，标注📊供参考
+10. **🔍 数据来源与质量说明** — 统一放在最后，含：三层架构说明、各平台数据来源表、数据质量门槛、已知局限性
+
+### 爬虫规则说明（v5.1 — 统一放报告末尾）
+
+每个平台的爬虫规则和数据来源**不在平台板块内标注**，统一放在报告末尾的「🔍 数据来源与质量说明」板块。
 
 ## 周五汇总模式
 
@@ -167,8 +574,11 @@ description: >
 - 跨平台共振 TOP 5
 - 趋势演变（持续/昙花/上升）
 - 本周热门 BGM TOP 5
-- Reddit 用户深度关注点
+- Reddit 用户深度关注点（本周高互动帖文话题聚类）
 - 与品牌 Content Pillar 的关联建议
+- 📊品牌动态汇总（本周品牌各平台表现）
+- 🔑 本周关键词矩阵表现回顾（哪些维度产出多/哪些维度需补充）
+- 📋 关键词矩阵优化建议（建议新增/淘汰的词）
 
 读取 `references/trend-summary-template.md`，保存为 `trend-reports/week-{nn}-summary.md`
 
@@ -389,11 +799,47 @@ description: >
 
 ---
 
-## 凭证说明
+## 变更日志
 
-| 变量 | 用途 | 所需模块 |
-|------|------|---------|
-| APIFY_API_TOKEN | 各平台数据抓取 | trend-radar / brand-voice-trainer / video-scripter |
-| GOOGLE_AI_API_KEY | Gemini 图片生成 | graphic-maker |
+### v4.0 (2026-06-03)
+- **三层架构**：从单层搜索升级为 Layer1(平台trending) + Layer2(赛道搜索) + Layer3(品牌监测)
+- **Twitter Actor替换**：apidojo/tweet-scraper(50条最低限制) → kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest(无限制)
+- **新增平台trending Actor**：automation-lab/twitter-trends-scraper(Twitter trending), agentx/instagram-trending-scraper(IG Explore), coregent/tiktok-trend-discovery-scraper(TikTok trending)
+- **Instagram赛道修复**：从directUrls(品牌主页)改为instagram-hashtag-scraper(hashtag搜索)，赛道相关板块排除品牌自身内容
+- **Reddit降级说明**：明确标注Apify Reddit爬虫当前不可用，默认搜索补充，可选OAuth模式升级
+- **Facebook降级说明**：明确标注Facebook无公开trending功能，改为指定主页监测+搜索补充
+- **爬虫规则透明标注**：每个平台标注数据来源、爬虫规则、局限性
+- **品牌内容排除规则**：赛道相关板块必须排除品牌账号内容
 
-无 API Token 时，trend-radar 降级为搜索工具获取热门内容，其他模块正常使用。
+### v5.0 (2026-06-03)
+- **数据质量门槛**：曝光≥500K+互动率≥5%（视频）/ likes≥10K（图片）/ likes≥500（推文）/ upvotes≥500（Reddit）
+- **赛道相关展示Top 10**：每个平台Layer2展示Top 10（非Top 5）
+- **Reddit Public JSON API方案**：替代Apify爬虫，直接调用reddit.com/.json端点
+- **报告结构重组**：结果先行，数据来源统一放末尾，移除平台板块内爬虫规则标注
+- **Instagram Trending country修复**：必须用全称"United States"而非"US"
+
+### v5.1 (2026-06-03)
+- **门槛下调更贴合赛道现实**：
+  - 视频：曝光≥100K + likes>1,000（原500K+5%互动率）
+  - 图片/Facebook：likes>1,000（原10K）
+  - Twitter：likes>500（不变）
+  - Reddit：upvotes>50 + 评论>20（原500 upvotes）
+- **Reddit改为垂类社区抓取**：只看垂类subreddit（dogs/DogCare/DogHealth等）的当月top+hot帖文，不再抓r/all泛版块
+- **Reddit数据源**：hot.json + top.json?t=month 双端点合并去重
+- **报告新增板块**：Reddit垂类社区热帖独立板块 + 低于门槛参考内容板块
+
+### v5.2 (2026-06-04)
+- **多维关键词矩阵系统**：从线性泛化(产品→品类→生活方式→情感)升级为4维关键词矩阵(D1产品+D2成分+D3症状+D4场景)，每个平台按不同维度优先级和格式组合搜索词
+- **维度选用策略**：D1+D3全平台必用；D2(成分)仅YouTube+Google Trends；D4(场景)仅YouTube/IG/TikTok
+- **平台搜索词适配规则**：TikTok限5词(Actor不稳定)、IG用hashtag格式8-10个、YouTube用问句/review句式8-10个、Twitter用自然语言+高级搜索语法8-10个、Google Trends用词根5-8个
+- **动态关键词反馈环**：每次执行后从L2 Top10提取新hashtag(≥3次)和竞品品牌名，写入listening-config.md动态扩展板块，14天有效期，最多30个
+- **Reddit垂类社区扩展**：从7个subreddit扩展到12个(新增puppy101/DogAllergies/rawpetfood/seniordogs/reactivedogs/NaturalPetCare)
+- **Reddit关键词相关性过滤**：帖子标题或正文需包含D1-D4维度关键词，过滤不相关内容
+- **L2评分框架调整**：品牌相关性权重25%(原20%)，按关键词矩阵命中维度数评分；新增多维度覆盖检查(Top10需覆盖≥2个维度)
+- **报告新增板块**：🔑新发现关键词(第8位)，展示本次执行学到的动态词
+- **周五汇总新增**：本周关键词矩阵表现回顾 + 优化建议
+- **Layer2 Actor输入参数更新**：所有平台搜索词改为多维矩阵驱动，标注维度优先级
+
+---
+
+> 本内容由 Coze AI 生成，请遵循相关法律法规及《人工智能生成合成内容标识办法》使用与传播。
