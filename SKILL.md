@@ -5,7 +5,7 @@ AIGC:
     ProduceID: 2556785148560384_0-data_volume/7646804706622472488-files/所有对话/主对话/PenPen/skill-files-v5.2/SKILL.md
     ReservedCode1: ""
     ContentPropagator: 001191110102MACQD9K64028705
-    PropagateID: 2556785148560384#1780542243834
+    PropagateID: 2556785148560384#1780547859194
     ReservedCode2: ""
 name: brand-content-engine
 description: >
@@ -34,9 +34,10 @@ description: >
 
 所有模块读取：
 - `listening-config.md`（赛道/品牌/content pillars/监测配置/关键词矩阵/动态扩展关键词）
-- `about-me.md` + `voice.md`（如已有，来自 voice-builder）
+- `brand-voice.md`（品牌定位与调性，由模块3.0训练生成；不存在时自动跳转brand-voice-trainer）
 
 如 `listening-config.md` 不存在，首次运行时引导用户创建，使用 `references/listening-config-template.md` 模板。
+如 `brand-voice.md` 不存在，自动跳转模块3.0（brand-voice-trainer）生成。
 
 ---
 
@@ -592,9 +593,9 @@ Layer 1 + Layer 2 均降级为搜索模式：
 
 ## 依赖
 
-- 模块1的 `week-{nn}-summary.md`（本周热点汇总）
-- `listening-config.md` 中的 Content Pillars
-- `about-me.md` + `voice.md`（品牌定位）
+- 模块1的 `trend-reports/` 或 `week-{nn}-summary.md`（本周热点数据）
+- `listening-config.md` 中的 Content Pillars 和当月主推
+- `brand-voice.md`（品牌定位与调性，由模块3.0训练生成；如不存在自动跳转brand-voice-trainer）
 
 ## 选题评分框架
 
@@ -605,16 +606,57 @@ Layer 1 + Layer 2 均降级为搜索模式：
 | Content Pillar 重叠 | 25% | 必须命中至少1个 pillar |
 | 可执行性 | 10% | 制作难度、素材可获得性 |
 
+## 防重复机制
+
+同一热点在多天出现时，通过5个变量排列组合确保内容不重复：
+1. **切入角度**（痛点识别/情感驱动/科学背书/UGC验证/生活场景/趣味共鸣）— 保证内容角度不同
+2. **钩子类型**（提问式/情感式/数据式/惊喜式/活动式）— 保证开头不重复
+3. **内容形式**（Carousel/Reel/单图/Thread/Short/Meme梗图）— 保证视觉不重复
+4. **平台**（TikTok/IG/FB/YouTube）— 保证受众不重叠
+5. **Pillar**（5个轮转）— 保证品牌调性覆盖
+
+**硬规则**：同一周内，不允许出现"切入角度+钩子类型"完全相同的两篇选题。同一热点连续两天出现时，必须切换角度和钩子。
+
+## 平台分发规则
+
+- **视频类**（Reel/Short）：TikTok + Instagram + Facebook + YouTube 多平台分发
+- **图文类**（Carousel/单图）：Instagram + Facebook 分发
+- 聚焦平台：TikTok、Instagram、Facebook、YouTube
+
 ## 执行流程
 
-1. 读取本周 trend-summary
+1. 读取本周 trend-summary（或最新trend-report）
 2. 读取 listening-config.md 的 Content Pillars 和当月主推
-3. 按评分框架对每个热点话题评分
-4. 为下周一~周五安排每日选题，覆盖不同 pillar
-5. 每个选题明确：选题名、目标平台、展示形式、对应 Pillar、热度来源、选题理由
-6. 提供文案方向提示（hook → body → CTA）
-7. 检查 pillar 覆盖均衡性
-8. 读取 `references/content-plan-template.md`，保存为 `content-plans/week-{nn}-plan.md`
+3. 读取 brand-voice.md，确保所有文案遵循品牌调性（语气参数、钩子偏好、CTA偏好、禁区）
+4. 按评分框架对每个热点话题评分
+5. 为下周一~周五安排每日选题，覆盖不同 pillar，应用防重复机制
+6. 每个选题明确：日期、平台、选题方向、内容形式、主推产品、制作难度、Content Pillar归属、热度来源
+7. 提供完整文案内容：帖文文案（Carousel逐页/视频逐段结构）+ 发布文案 + 使用hashtag
+8. 检查 pillar 覆盖均衡性和防重复规则
+9. 备选选题以表格形式罗列（选题方向/平台/形式/产品/难度/热度来源）
+10. 读取 `references/content-plan-template.md`，保存为 `content-plans/week-{nn}-plan.md`
+
+## 输出结构
+
+1. 🎯 本周内容主轴 + 当月主推产品关联
+2. 📅 当周内容规划（每天一份，含完整文案）
+3. 📋 备选选题（表格）
+4. 📊 Content Pillar覆盖检查 + 产品露出分布
+5. 🔮 下周值得关注
+
+## 梗图（Meme）选题指引
+
+Pillar #5「品牌情感与文化」支持梗图选题，规则如下：
+
+- **核心原则**：只有养宠人才懂的共鸣，不是硬塞产品的广告
+- **切入角度**：趣味共鸣（养宠日常的荒诞/心酸/可爱瞬间）
+- **内容形式**：Meme梗图（单图/Carousel均可）
+- **分发平台**：IG + FB（图文）为主，TikTok可做短视频meme
+- **制作难度**：低（无需拍摄，可用素材+文字排版）
+- **品牌露出**：自然融入即可——角落Logo、品牌色边框、PenPen标志性用语（paw-some / Fur Sure等），不强加产品
+- **选题来源**：trending meme格式 × 养宠场景改编（如"when your dog…"、"POV: you're a dog parent…"）
+- **频率建议**：每周1-2条梗图，穿插在Pillar 1-4的硬核内容之间，调节节奏
+- **禁区**：不用悲伤/负面狗狗画面、不调侃疾病痛苦、不涉及争议话题
 
 ---
 
