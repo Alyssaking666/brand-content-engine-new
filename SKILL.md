@@ -37,7 +37,7 @@ GOOGLE_AI_API_KEY	Gemini 图片生成	graphic-maker	Google AI Studio
 Apify Token 配置
 注册 Apify 账号（免费计划含每月 $5 额度）
 进入 Console → Integrations 复制 API Token
-在 Coze Skill 凭证配置中添加 `APIFY_API_TOKEN`，值为复制的 Token
+在 Coze Skill 凭证配置中添加 `APIFY\_API\_TOKEN`，值为复制的 Token
 配置后能力提升：
 trend-radar：从搜索模式升级为真实爬虫抓取，获取精确互动数据+原始链接
 brand-voice-trainer：可直接抓取品牌社媒主页历史帖子
@@ -45,7 +45,7 @@ Google Trends：获取精确的搜索热度曲线和 Rising 关键词
 无 Apify Token 时：trend-radar 降级为搜索模式（freshness 限定时间范围），数据精度降低但仍可用。Google Trends 部分降级为搜索推断。
 模块1：trend-radar（每日热门监测）
 三层架构（v4.0 核心变更）
-> **trend-radar 从单层搜索升级为三层架构，解决"Top 5 是不是真的 Top 5"问题。**
+> \*\*trend-radar 从单层搜索升级为三层架构，解决"Top 5 是不是真的 Top 5"问题。\*\*
 每个平台产出三个板块，数据来源和爬虫规则完全不同：
 层级	板块	数据来源	爬虫规则	是否为"真正的Top5"
 Layer 1	🔥 平台热门 Top 5	平台原生trending/discover API	直接抓平台trending页面→过滤宠物/动物相关	✅ 是，来自平台自己的trending算法
@@ -87,7 +87,7 @@ Layer 1: 平台热门
 X/Twitter Trends (`automation-lab/twitter-trends-scraper`)：
 ```json
 {
-  "locations": ["United States", "Worldwide"],
+  "locations": \["United States", "Worldwide"],
   "maxItems": 100
 }
 ```
@@ -97,7 +97,7 @@ X/Twitter Trends (`automation-lab/twitter-trends-scraper`)：
 X/Twitter Trends 后续搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`)：
 ```json
 {
-  "searchTerms": ["{trending topic from Layer 1}"],
+  "searchTerms": \["{trending topic from Layer 1}"],
   "maxTweets": 5,
   "sort": "Top"
 }
@@ -106,8 +106,8 @@ X/Twitter Trends 后续搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-pe
 Instagram Explore (`agentx/instagram-trending-scraper`)：
 ```json
 {
-  "max_results": 50,
-  "download_medias": "none",
+  "max\_results": 50,
+  "download\_medias": "none",
   "country": "United States"
 }
 ```
@@ -123,7 +123,7 @@ TikTok Trend Discovery (`coregent/tiktok-trend-discovery-scraper`)：
 YouTube (`streamers/youtube-scraper`)：
 ```json
 {
-  "searchQueries": ["trending pets today", "viral dog video", "trending animals"],
+  "searchQueries": \["trending pets today", "viral dog video", "trending animals"],
   "maxResults": 15
 }
 ```
@@ -133,7 +133,7 @@ Layer 2: 赛道相关（多维关键词矩阵驱动）
 X/Twitter 赛道搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`)：
 ```json
 {
-  "searchTerms": [
+  "searchTerms": \[
     "dog probiotic since:{date}", "dog supplement since:{date}",
     "dog allergy chews since:{date}", "my dog itchy skin since:{date}",
     "dog joint pain since:{date}", "dog upset stomach since:{date}",
@@ -151,7 +151,7 @@ X/Twitter 赛道搜索 (`kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-resul
 Instagram Hashtag (`apify/instagram-hashtag-scraper`)：
 ```json
 {
-  "hashtags": ["dogsupplement", "dogprobiotic", "doghealth", "dogwellness",
+  "hashtags": \["dogsupplement", "dogprobiotic", "doghealth", "dogwellness",
                "dogallergy", "dogjointhealth", "dognutrition", "healthydog",
                "petsupplements", "holisticpetcare"],
   "resultsLimit": 15
@@ -164,7 +164,7 @@ TikTok (`thescrapelab/tiktok-scraper-2-0`)：
 ```json
 {
   "workflow": "keywords",
-  "keywords": ["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"],
+  "keywords": \["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"],
   "maxVideosPerKeyword": 5
 }
 ```
@@ -175,7 +175,7 @@ TikTok (`thescrapelab/tiktok-scraper-2-0`)：
 YouTube (`streamers/youtube-scraper`)：
 ```json
 {
-  "searchQueries": ["best dog probiotic 2026", "dog supplement review",
+  "searchQueries": \["best dog probiotic 2026", "dog supplement review",
                     "is glucosamine good for dogs", "dog allergy chews honest review",
                     "senior dog joint supplement", "dog probiotic before and after",
                     "vet recommended dog supplements", "dog itchy skin solution"],
@@ -188,7 +188,7 @@ YouTube (`streamers/youtube-scraper`)：
 Facebook (`apify/facebook-pages-scraper`)：
 ```json
 {
-  "startUrls": [{"url": "https://www.facebook.com/{competitor-brand-page}"}],
+  "startUrls": \[{"url": "https://www.facebook.com/{competitor-brand-page}"}],
   "maxItems": 10
 }
 ```
@@ -198,9 +198,9 @@ Google Trends Explore (`sourabhbgp/google-trends-scraper`)：
 ```json
 {
   "mode": "explore",
-  "searchTerms": ["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"],
+  "searchTerms": \["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"],
   "geo": "US",
-  "time_range": "now 1-d"
+  "time\_range": "now 1-d"
 }
 ```
 优先维度：D1(产品) > D2(成分) > D3(症状)
@@ -209,7 +209,7 @@ Layer 3: 品牌动态
 Instagram 品牌主页 (`apify/instagram-api-scraper` directUrls模式)：
 ```json
 {
-  "directUrls": ["https://www.instagram.com/penpenpet/"],
+  "directUrls": \["https://www.instagram.com/penpenpet/"],
   "resultsLimit": 10
 }
 ```
@@ -217,7 +217,7 @@ TikTok 品牌主页 (`thescrapelab/tiktok-scraper-2-0` profile模式)：
 ```json
 {
   "workflow": "profiles",
-  "profiles": ["penpenpet"],
+  "profiles": \["penpenpet"],
   "maxVideosPerProfile": 10
 }
 ```
@@ -226,7 +226,7 @@ Reddit（Public JSON API 直连，v5.1）
 方案：直接调用 Reddit Public JSON API，无需 Apify/OAuth，免费且无速率限制（浏览器级别请求）。
 数据源：
 热门帖：`https://www.reddit.com/r/{subreddit}/hot.json?limit=25`
-月度Top帖：`https://www.reddit.com/r/{subreddit}/top.json?t=month&limit=25`
+月度Top帖：`https://www.reddit.com/r/{subreddit}/top.json?t=month\&limit=25`
 垂类 Subreddit 列表（从 listening-config.md 读取，默认12个）：
 类别	Subreddit	说明
 核心养狗	dogs, DogCare, puppy101	综合养狗讨论
@@ -242,7 +242,7 @@ Reddit（Public JSON API 直连，v5.1）
 门槛：upvotes>50 且 评论数>20
 按互动量排序，取Top 10
 返回字段：
-`title`（帖子标题）、`url` / `permalink`（原始链接）、`score`（upvotes）、`num_comments`（评论数）、`subreddit`、`created_utc`（发布时间）、`selftext`（正文摘要）
+`title`（帖子标题）、`url` / `permalink`（原始链接）、`score`（upvotes）、`num\_comments`（评论数）、`subreddit`、`created\_utc`（发布时间）、`selftext`（正文摘要）
 降级：
 如环境无法访问 reddit.com（沙箱网络限制），降级为搜索补充：`site:reddit.com` + 赛道关键词 + `freshness=7`（近7天）
 Facebook（无公开trending功能）
@@ -251,7 +251,7 @@ Facebook（无公开trending功能）
 搜索补充Facebook数据
 监测指定竞品/行业品牌Facebook主页（需用户在listening-config.md中提供URL）
 时间范围控制（核心）
-> **trend-radar 的核心价值在于时效性。所有抓取操作必须明确限定时间范围，确保"今日热点"产出的数据确实来自当天或近48h。**
+> \*\*trend-radar 的核心价值在于时效性。所有抓取操作必须明确限定时间范围，确保"今日热点"产出的数据确实来自当天或近48h。\*\*
 时间范围规则
 模式	数据时间范围	说明
 每日热点（默认）	当天 00:00 ~ 当前时刻	核心抓取窗口，优先24h内
@@ -265,7 +265,7 @@ TikTok	Trending自带时效性	抓取后按 `createTime` 字段过滤
 YouTube	搜索后按发布时间过滤	搜索后按发布时间过滤
 Reddit	N/A（降级为搜索）	搜索设置freshness
 Facebook	N/A	抓取后按 `time` 过滤
-Google Trends	内置 `time_range` 参数	内置 `time_range` 参数
+Google Trends	内置 `time\_range` 参数	内置 `time\_range` 参数
 数据准入规则（硬约束）
 仅监测海外主流社媒平台：X/Twitter、Instagram、TikTok、YouTube、Facebook、Reddit + Google Trends。排除所有国内平台（天猫、淘宝、微博、小红书、抖音国内版、拼多多等），搜索结果中涉及国内平台的内容一律过滤掉。
 链接必填：每条入选内容必须附带原始来源 URL，方便点击验证和追溯。无链接的内容不得录入报告。
@@ -294,7 +294,7 @@ Layer 2: 赛道相关评分（≥7分入选）
 可借鉴性	20%	内容形式/钩子/叙事是否可迁移到品牌内容
 多维度覆盖检查：Layer 2 最终 Top 10 结果应覆盖至少 2 个关键词维度（如只命中 D1 产品层，需检查其他维度是否有数据未被捕获），避免同质化。
 多维关键词矩阵系统（v5.2 核心升级）
-> **从线性泛化（产品→品类→生活方式→情感）升级为4维关键词矩阵，每个平台使用不同的搜索词组合和格式，大幅提升赛道内容捕获覆盖面。**
+> \*\*从线性泛化（产品→品类→生活方式→情感）升级为4维关键词矩阵，每个平台使用不同的搜索词组合和格式，大幅提升赛道内容捕获覆盖面。\*\*
 关键词维度定义
 所有维度的具体词汇由 `listening-config.md` 的 `## 关键词矩阵` 板块定义，以下为框架：
 维度	说明	适用平台	示例（宠物保健品赛道）
@@ -302,7 +302,7 @@ D1: 产品层(Product)	品类通用名+产品形态	全平台	dog probiotic, dog
 D2: 成分层(Ingredient)	核心功效成分	YouTube + Google Trends	glucosamine dogs, fish oil dogs, turmeric pet, omega 3 dogs, prebiotic dogs, collagen dogs, digestive enzymes dogs
 D3: 症状/痛点层(Symptom)	宠主搜索的问题描述	全平台（Twitter/Reddit优先）	dog itchy skin, dog diarrhea, dog joint pain, senior dog mobility, dog upset stomach, dog hair loss, dog bad breath, dog anxiety, dog hot spots
 D4: 场景层(Scenario)	养宠生活场景	YouTube + IG + TikTok	dog wellness routine, aging dog care, rescue dog nutrition, new puppy essentials, senior dog quality of life, dog preventive health
-> **维度选用策略**：D1和D3是全平台必用维度；D2(成分)仅在YouTube和Google Trends使用（其他平台搜索量太低）；D4(场景)仅在YouTube/IG/TikTok使用。
+> \*\*维度选用策略\*\*：D1和D3是全平台必用维度；D2(成分)仅在YouTube和Google Trends使用（其他平台搜索量太低）；D4(场景)仅在YouTube/IG/TikTok使用。
 平台搜索词适配规则
 > 同一个品类在不同平台的"语言"完全不同，搜索词必须适配平台原生表达。
 平台	搜索特性	优先维度	搜索词格式要求	每次搜索词数量
@@ -316,31 +316,31 @@ Google Trends	搜索量词根，精确匹配	D1 > D2 > D3	简短品类词根	5-8
 TikTok 搜索词组（5个，精选最高价值词）：
 ```json
 {
-  "keywords": ["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"]
+  "keywords": \["dog probiotic", "dog allergy relief", "itchy dog remedy", "#doghealth", "senior dog mobility"]
 }
 ```
 Instagram 搜索词组（8-10个hashtag）：
 ```json
 {
-  "hashtags": ["dogsupplement", "dogprobiotic", "doghealth", "dogwellness", "dogallergy", "dogjointhealth", "dognutrition", "healthydog", "petsupplements", "holisticpetcare"]
+  "hashtags": \["dogsupplement", "dogprobiotic", "doghealth", "dogwellness", "dogallergy", "dogjointhealth", "dognutrition", "healthydog", "petsupplements", "holisticpetcare"]
 }
 ```
 YouTube 搜索词组（8-10个）：
 ```json
 {
-  "searchQueries": ["best dog probiotic 2026", "dog supplement review", "is glucosamine good for dogs", "dog allergy chews honest review", "senior dog joint supplement", "dog probiotic before and after", "vet recommended dog supplements", "dog itchy skin solution"]
+  "searchQueries": \["best dog probiotic 2026", "dog supplement review", "is glucosamine good for dogs", "dog allergy chews honest review", "senior dog joint supplement", "dog probiotic before and after", "vet recommended dog supplements", "dog itchy skin solution"]
 }
 ```
 X/Twitter 搜索词组（8-10个）：
 ```json
 {
-  "searchTerms": ["dog probiotic since:{date}", "dog supplement since:{date}", "dog allergy chews since:{date}", "my dog itchy skin since:{date}", "dog joint pain since:{date}", "dog upset stomach since:{date}", "dog gut health since:{date}", "senior dog mobility since:{date}"]
+  "searchTerms": \["dog probiotic since:{date}", "dog supplement since:{date}", "dog allergy chews since:{date}", "my dog itchy skin since:{date}", "dog joint pain since:{date}", "dog upset stomach since:{date}", "dog gut health since:{date}", "senior dog mobility since:{date}"]
 }
 ```
 Google Trends 搜索词组（5-8个）：
 ```json
 {
-  "searchTerms": ["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"]
+  "searchTerms": \["dog probiotic", "dog supplement", "pet supplements", "glucosamine for dogs", "dog joint supplement", "dog vitamins", "dog gut health"]
 }
 ```
 动态关键词反馈环（v5.2 新增）
@@ -357,14 +357,14 @@ listening-config.md 动态扩展关键词格式：
 > 自动提取，有效期14天，最多保留30个，过期移入归档区
 
 ### 2026-06-04 新发现
-- [TikTok] #dogbiome (出现5次, 来自Top10中3条内容)
-- [Instagram] #rawfeddogs (出现4次)
-- [YouTube] "dog microbiome supplement" (Top1标题关键词)
-- [竞品] "BarkBiotics" (新品牌, 出现在3个平台)
+- \[TikTok] #dogbiome (出现5次, 来自Top10中3条内容)
+- \[Instagram] #rawfeddogs (出现4次)
+- \[YouTube] "dog microbiome supplement" (Top1标题关键词)
+- \[竞品] "BarkBiotics" (新品牌, 出现在3个平台)
 
 ### 2026-06-03 新发现
-- [TikTok] #allergydogmom (出现3次)
-- [X/Twitter] "dog skin barrier" (高互动推文关键词)
+- \[TikTok] #allergydogmom (出现3次)
+- \[X/Twitter] "dog skin barrier" (高互动推文关键词)
 ```
 反馈环规则：
 每次执行后自动提取，无需人工干预
@@ -375,7 +375,7 @@ listening-config.md 动态扩展关键词格式：
 读取 `listening-config.md`，确认监测平台、子版块、阈值、关键词矩阵(D1-D4)、动态扩展关键词、品牌账号列表
 组装搜索词：按平台适配规则，从关键词矩阵各维度 + 动态扩展关键词中组合生成每个平台的搜索词组（TikTok限5个，其他平台8-10个）
 计算时间范围：确定 start_date = 当天 00:00，end_date = 当前时刻；如当日数据不足扩展至48h
-Layer 1 抓取：平台热门（如配置了 `APIFY_API_TOKEN`）：
+Layer 1 抓取：平台热门（如配置了 `APIFY\_API\_TOKEN`）：
 Twitter: `automation-lab/twitter-trends-scraper` → 获取美国Top50 trending → 筛选宠物/动物相关
 Instagram: `agentx/instagram-trending-scraper` → 获取Explore trending → 筛选宠物/动物topic
 TikTok: `coregent/tiktok-trend-discovery-scraper` → 获取trending内容
@@ -383,7 +383,7 @@ YouTube: `streamers/youtube-scraper` → trending关键词搜索
 Google Trends: `sourabhbgp/google-trends-scraper` → trending模式
 Reddit/Facebook: 搜索补充（`site:reddit.com trending pets` 等）
 提取链接：从Apify返回数据中提取链接字段，每条结果必须有可点击链接
-Layer 2 抓取：赛道相关（如配置了 `APIFY_API_TOKEN`）：
+Layer 2 抓取：赛道相关（如配置了 `APIFY\_API\_TOKEN`）：
 Twitter: `kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest` → 多维关键词搜索（8-10词，D3>D1>D4）
 Instagram: `apify/instagram-hashtag-scraper` → 多维Hashtag搜索（8-10个，D1>D4>D3）
 TikTok: `thescrapelab/tiktok-scraper-2-0` → 多维关键词搜索（5词，D3>D1>D4）
